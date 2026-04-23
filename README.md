@@ -16,13 +16,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
-| `npm run start` | Start after `build` |
-| `npm run lint` | ESLint (Next core-web-vitals) |
-| `npm run test` | Vitest (unit + component smoke) |
+| Script          | Description                     |
+| --------------- | ------------------------------- |
+| `npm run dev`   | Development server              |
+| `npm run build` | Production build                |
+| `npm run start` | Start after `build`             |
+| `npm run lint`  | ESLint (Next core-web-vitals)   |
+| `npm run test`  | Vitest (unit + component smoke) |
 
 ## Architecture (short)
 
@@ -66,9 +66,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 **Suggested next**
 
-1. Persist bookings/reviews + migrations.
-2. E2E (Playwright) for list → detail → checkout.
-3. Rate limits and stricter API payload validation.
+1. Separate front-end from the back-end.
+2. Persist bookings/reviews + migrations.
+3. E2E (Playwright) for list → detail → checkout.
+4. Rate limits and stricter API payload validation.
 
 ## LLM
 
