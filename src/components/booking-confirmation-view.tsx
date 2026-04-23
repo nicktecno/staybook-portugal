@@ -45,6 +45,9 @@ export function BookingConfirmationView({ bookingId }: { bookingId: string }) {
     };
   }, [bookingId]);
 
+  const errLower = error?.toLowerCase() ?? "";
+  const needsLogin = errLower.includes("signed in") || errLower.includes("must be signed");
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -61,14 +64,25 @@ export function BookingConfirmationView({ bookingId }: { bookingId: string }) {
     return (
       <div className="min-h-screen">
         <SiteHeader />
-        <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-2xl space-y-4 px-4 py-10 sm:px-6">
           <Alert variant="destructive">
-            <AlertTitle>Confirmation not found</AlertTitle>
-            <AlertDescription className="mt-2">{error ?? "Unknown error"}</AlertDescription>
+            <AlertTitle>{needsLogin ? "Sign in required" : "Confirmation unavailable"}</AlertTitle>
+            <AlertDescription className="mt-2 space-y-3">
+              <p>{error ?? "Unknown error"}</p>
+              {needsLogin ? (
+                <Link
+                  href={`/login?returnUrl=${encodeURIComponent(`/bookings/confirmation?id=${encodeURIComponent(bookingId)}`)}`}
+                  className={cn(buttonVariants({ variant: "secondary" }), "inline-flex font-semibold")}
+                >
+                  Sign in
+                </Link>
+              ) : (
+                <Link href="/" className={cn(buttonVariants({ variant: "outline" }), "inline-flex")}>
+                  Browse stays
+                </Link>
+              )}
+            </AlertDescription>
           </Alert>
-          <Link href="/" className={cn(buttonVariants({ variant: "outline" }), "mt-4 inline-flex")}>
-            Browse stays
-          </Link>
         </div>
       </div>
     );
@@ -79,18 +93,18 @@ export function BookingConfirmationView({ bookingId }: { bookingId: string }) {
       <SiteHeader />
       <main className="mx-auto max-w-2xl space-y-6 px-4 py-10 sm:px-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">You are booked</h1>
-          <p className="text-muted-foreground">Here is your confirmation reference for the mock payment.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-primary">You&apos;re booked</h1>
+          <p className="text-muted-foreground">Mock payment reference and summary — keep your booking ID.</p>
         </div>
 
-        <Card>
+        <Card className="border-primary/10 shadow-md">
           <CardHeader>
-            <CardTitle className="text-base">Booking details</CardTitle>
+            <CardTitle className="text-base">Details</CardTitle>
             <CardDescription>{stay?.title ?? "Stay"}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              Confirmation ID: <span className="font-mono font-medium">{booking.id}</span>
+              Booking ID: <span className="font-mono font-medium">{booking.id}</span>
             </p>
             <p>
               Payment reference: <span className="font-mono font-medium">{booking.paymentRef}</span>
@@ -110,15 +124,18 @@ export function BookingConfirmationView({ bookingId }: { bookingId: string }) {
             <p>
               Guests: <span className="font-medium">{booking.guests}</span>
             </p>
-            <p className="pt-2 text-base font-semibold">
-              Charged {money(booking.totalPrice, booking.currency)}
-            </p>
+            <p className="pt-2 text-base font-semibold text-primary">Total {money(booking.totalPrice, booking.currency)}</p>
           </CardContent>
         </Card>
 
-        <Link href="/" className={cn(buttonVariants(), "inline-flex w-fit")}>
-          Find another stay
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/bookings" className={cn(buttonVariants({ variant: "outline" }), "inline-flex")}>
+            My bookings
+          </Link>
+          <Link href="/" className={cn(buttonVariants(), "inline-flex")}>
+            New search
+          </Link>
+        </div>
       </main>
     </div>
   );

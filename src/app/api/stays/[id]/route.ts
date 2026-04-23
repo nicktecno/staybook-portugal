@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { mergeCalendarBlocks } from "@/lib/calendar-blocks";
 import { getStayStore } from "@/lib/stay-store";
 import { log } from "@/lib/logger";
 
@@ -13,6 +14,7 @@ export async function GET(_request: Request, context: RouteContext) {
     log.warn("api.stays.detail.not_found", { id, ms: Date.now() - started });
     return NextResponse.json({ error: "Stay not found" }, { status: 404 });
   }
+  const calendarBlocks = mergeCalendarBlocks(stay.blockedRanges, store.getBookingsForStay(id));
   log.info("api.stays.detail", { id, ms: Date.now() - started });
-  return NextResponse.json({ stay });
+  return NextResponse.json({ stay, calendarBlocks });
 }

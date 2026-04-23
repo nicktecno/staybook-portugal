@@ -115,6 +115,24 @@ class StayStore {
   getBooking(id: string): Booking | undefined {
     return this.bookings.find((b) => b.id === id);
   }
+
+  getBookingsForStay(stayId: string): Booking[] {
+    return this.bookings.filter((b) => b.stayId === stayId);
+  }
+
+  listBookingsForUser(userId: string): Booking[] {
+    return this.bookings
+      .filter((b) => b.userId === userId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  deleteBooking(bookingId: string, userId: string): { ok: true } | { ok: false; reason: "not_found" | "forbidden" } {
+    const i = this.bookings.findIndex((b) => b.id === bookingId);
+    if (i === -1) return { ok: false, reason: "not_found" };
+    if (this.bookings[i].userId !== userId) return { ok: false, reason: "forbidden" };
+    this.bookings.splice(i, 1);
+    return { ok: true };
+  }
 }
 
 export function getStayStore(): StayStore {

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { BookingConfirmationView } from "@/components/booking-confirmation-view";
 
 export const metadata: Metadata = {
-  title: "Booking confirmed",
+  title: "Reserva confirmada",
 };
 
 function ConfirmationInner({ bookingId }: { bookingId: string }) {

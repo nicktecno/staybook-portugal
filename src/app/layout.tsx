@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     default: "Staybook Portugal",
     template: "%s · Staybook Portugal",
   },
-  description: "Discover stays, read reviews, check availability, and complete a mock checkout.",
+  description: "Search stays in Portugal, read reviews, check availability, and complete a mock checkout while signed in.",
 };
 
 export default function RootLayout({
@@ -27,10 +28,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="pt-BR"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -32,6 +32,8 @@ export type Review = {
 export type Booking = {
   id: string;
   stayId: string;
+  /** Account that owns this booking (required for new bookings). */
+  userId: string;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -41,6 +43,12 @@ export type Booking = {
   currency: string;
   createdAt: string;
   paymentRef: string;
+};
+
+export type UserPublic = {
+  id: string;
+  email: string;
+  displayName: string;
 };
 
 export type StayListItem = Pick<

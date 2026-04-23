@@ -11,7 +11,7 @@ function formatPrice(n: number, currency: string) {
 
 export function StayCard({ stay }: { stay: StayListItem }) {
   return (
-    <Card className="overflow-hidden pt-0 transition-shadow hover:shadow-md">
+    <Card className="overflow-hidden border-primary/10 pt-0 shadow-md transition-shadow hover:shadow-lg hover:border-primary/20">
       <CardHeader className="p-0">
         <Link href={`/stays/${stay.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <div className="relative aspect-[16/10] w-full">

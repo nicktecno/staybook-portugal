@@ -1,12 +1,33 @@
 import { NextResponse } from "next/server";
-import { getStayStore } from "@/lib/stay-store";
+import { mergeCalendarBlocks } from "@/lib/calendar-blocks";
 import { isRangeAvailable } from "@/lib/availability";
 import { quoteStay } from "@/lib/pricing";
+import { readSessionUser } from "@/lib/server-session";
+import { getStayStore } from "@/lib/stay-store";
 import { log } from "@/lib/logger";
 import type { Booking } from "@/types";
 
+export async function GET() {
+  const user = await readSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+  }
+  const store = getStayStore();
+  const bookings = store.listBookingsForUser(user.id);
+  const enriched = bookings.map((b) => ({
+    booking: b,
+    stay: store.getStay(b.stayId) ?? null,
+  }));
+  return NextResponse.json({ bookings: enriched });
+}
+
 export async function POST(request: Request) {
   const started = Date.now();
+  const user = await readSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "You must be signed in to book." }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -23,7 +44,6 @@ export async function POST(request: Request) {
   const checkOut = "checkOut" in body && typeof body.checkOut === "string" ? body.checkOut : "";
   const guests = "guests" in body && typeof body.guests === "number" ? body.guests : NaN;
   const guestName = "guestName" in body && typeof body.guestName === "string" ? body.guestName : "";
-  const guestEmail = "guestEmail" in body && typeof body.guestEmail === "string" ? body.guestEmail : "";
   const paymentMethod =
     "paymentMethod" in body && typeof body.paymentMethod === "string" ? body.paymentMethod : "";
 
@@ -34,11 +54,8 @@ export async function POST(request: Request) {
   if (!Number.isFinite(guests) || guests < 1 || !Number.isInteger(guests)) {
     return NextResponse.json({ error: "guests must be a positive integer" }, { status: 400 });
   }
-  if (!guestName.trim() || !guestEmail.trim()) {
-    return NextResponse.json({ error: "guestName and guestEmail are required" }, { status: 400 });
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
-    return NextResponse.json({ error: "guestEmail looks invalid" }, { status: 400 });
+  if (!guestName.trim()) {
+    return NextResponse.json({ error: "guestName is required" }, { status: 400 });
   }
   if (!paymentMethod) {
     return NextResponse.json({ error: "paymentMethod is required (mock)" }, { status: 400 });
@@ -56,7 +73,8 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isRangeAvailable(checkIn, checkOut, stay.blockedRanges)) {
+  const calendarBlocks = mergeCalendarBlocks(stay.blockedRanges, store.getBookingsForStay(stayId));
+  if (!isRangeAvailable(checkIn, checkOut, calendarBlocks)) {
     log.warn("api.bookings.unavailable", { stayId, checkIn, checkOut, ms: Date.now() - started });
     return NextResponse.json({ error: "Selected dates are not available" }, { status: 409 });
   }
@@ -74,11 +92,12 @@ export async function POST(request: Request) {
   const booking: Booking = {
     id: `bk_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
     stayId,
+    userId: user.id,
     checkIn,
     checkOut,
     guests,
     guestName: guestName.trim(),
-    guestEmail: guestEmail.trim(),
+    guestEmail: user.email,
     totalPrice: quote.total,
     currency: stay.currency,
     createdAt: new Date().toISOString(),
@@ -89,6 +108,7 @@ export async function POST(request: Request) {
   log.info("api.bookings.created", {
     bookingId: booking.id,
     stayId,
+    userId: user.id,
     nights: quote.nights,
     total: quote.total,
     ms: Date.now() - started,

@@ -38,6 +38,7 @@ export function StayDetailsView({ stayId }: { stayId: string }) {
   const textId = useId();
 
   const [stay, setStay] = useState<Stay | null>(null);
+  const [calendarBlocks, setCalendarBlocks] = useState<{ start: string; end: string }[]>([]);
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +58,12 @@ export function StayDetailsView({ stayId }: { stayId: string }) {
     try {
       const [s, r] = await Promise.all([fetchStay(stayId), fetchReviews(stayId)]);
       setStay(s.stay);
+      setCalendarBlocks(s.calendarBlocks);
       setReviews(r.reviews);
     } catch (e) {
       setError((e as Error).message);
       setStay(null);
+      setCalendarBlocks([]);
       setReviews(null);
     } finally {
       setLoading(false);
@@ -79,8 +82,8 @@ export function StayDetailsView({ stayId }: { stayId: string }) {
 
   const availabilityOk = useMemo(() => {
     if (!stay || !checkInIso || !checkOutIso) return null;
-    return isRangeAvailable(checkInIso, checkOutIso, stay.blockedRanges);
-  }, [stay, checkInIso, checkOutIso]);
+    return isRangeAvailable(checkInIso, checkOutIso, calendarBlocks);
+  }, [stay, checkInIso, checkOutIso, calendarBlocks]);
 
   const quote = useMemo(() => {
     if (!stay || !checkInIso || !checkOutIso) return null;
@@ -97,13 +100,13 @@ export function StayDetailsView({ stayId }: { stayId: string }) {
     const today = startOfToday();
     return (date: Date) => {
       if (isBefore(date, today)) return true;
-      return stay.blockedRanges.some((br) => {
+      return calendarBlocks.some((br) => {
         const start = parseISO(br.start);
         const end = parseISO(br.end);
         return date >= start && date <= end;
       });
     };
-  }, [stay]);
+  }, [stay, calendarBlocks]);
 
   async function onSubmitReview(e: React.FormEvent) {
     e.preventDefault();
@@ -291,7 +294,9 @@ export function StayDetailsView({ stayId }: { stayId: string }) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Availability & price</CardTitle>
-                <CardDescription>Select dates to see totals. Blocked dates cannot be selected.</CardDescription>
+                <CardDescription>
+                  Pick dates to see your total. Booked or blocked nights appear disabled on the calendar.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Popover>
@@ -374,7 +379,8 @@ export function StayDetailsView({ stayId }: { stayId: string }) {
 
                 <Button
                   type="button"
-                  className="w-full"
+                  variant="secondary"
+                  className="w-full font-semibold shadow-sm"
                   disabled={
                     !checkInIso ||
                     !checkOutIso ||

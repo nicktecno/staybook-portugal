@@ -16,7 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 
 export function StaySearch() {
   const queryId = useId();
@@ -69,72 +69,110 @@ export function StaySearch() {
   }, [load]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6">
-      <section className="space-y-3">
-        <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Find your next stay in Portugal</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Curated apartments, hotels, and hostels with transparent pricing, real reviews, and a checkout you can finish in
-          minutes.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
+      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary via-primary to-primary/85 px-6 py-10 text-primary-foreground shadow-xl sm:px-10">
+        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-secondary/25 blur-3xl" aria-hidden />
+        <div className="relative max-w-2xl space-y-3">
+          <p className="text-sm font-semibold uppercase tracking-wider text-secondary">Portugal stays</p>
+          <h1 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+            Find your next place — clear pricing, real reviews, signed-in checkout
+          </h1>
+          <p className="max-w-xl text-primary-foreground/90">
+            Hotels, apartments, and hostels in one flow. This demo runs entirely on your machine with in-memory data.
+          </p>
+        </div>
       </section>
 
-      <section aria-label="Search and filters" className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor={queryId}>Search</Label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              id={queryId}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="City, neighborhood, vibe…"
-              className="pl-9"
-              autoComplete="off"
-            />
+      <section
+        aria-label="Search and filters"
+        className="rounded-2xl border-2 border-primary/15 bg-card p-1 shadow-2xl shadow-primary/10 ring-1 ring-black/[0.04] dark:ring-white/10"
+      >
+        <div className="flex flex-col gap-5 rounded-[calc(var(--radius-2xl)-2px)] bg-gradient-to-b from-card to-muted/30 p-4 sm:p-6">
+          <div className="space-y-2">
+            <Label htmlFor={queryId} className="text-sm font-semibold text-foreground">
+              Search destinations or properties
+            </Label>
+            <div className="relative flex flex-col gap-2 sm:flex-row sm:items-stretch">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  className="pointer-events-none absolute left-4 top-1/2 z-10 size-5 -translate-y-1/2 text-primary"
+                  aria-hidden
+                />
+                <Input
+                  id={queryId}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Try Lisbon, Porto, beach, loft…"
+                  autoComplete="off"
+                  className="h-14 rounded-xl border-2 border-primary/20 bg-background pl-12 pr-4 text-base shadow-inner transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                className="h-14 shrink-0 rounded-xl px-6 font-semibold shadow-md sm:w-auto"
+                onClick={() => void load()}
+                disabled={loading}
+              >
+                <RefreshCw className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`} aria-hidden />
+                Refresh
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label id={typeId}>Property type</Label>
-          <Select
-            value={propertyType}
-            onValueChange={(v) => {
-              if (v) setPropertyType(v);
-            }}
-          >
-            <SelectTrigger aria-labelledby={typeId}>
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="hotel">Hotel</SelectItem>
-              <SelectItem value="apartment">Apartment</SelectItem>
-              <SelectItem value="hostel">Hostel</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label id={sortId}>Sort</Label>
-          <Select
-            value={sort}
-            onValueChange={(v) => {
-              if (v) setSort(v);
-            }}
-          >
-            <SelectTrigger aria-labelledby={sortId}>
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recommended">Recommended</SelectItem>
-              <SelectItem value="rating_desc">Top rated</SelectItem>
-              <SelectItem value="price_asc">Price: low to high</SelectItem>
-              <SelectItem value="price_desc">Price: high to low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end sm:col-span-2 lg:col-span-1">
-          <Button type="button" variant="secondary" className="w-full" onClick={() => void load()} disabled={loading}>
-            Refresh
-          </Button>
+
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" aria-hidden />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+            <div className="space-y-2">
+              <Label id={typeId} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Property type
+              </Label>
+              <Select
+                value={propertyType}
+                onValueChange={(v) => {
+                  if (v) setPropertyType(v);
+                }}
+              >
+                <SelectTrigger
+                  aria-labelledby={typeId}
+                  className="h-12 rounded-xl border-2 border-primary/15 bg-background text-base shadow-sm"
+                >
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="hotel">Hotel</SelectItem>
+                  <SelectItem value="apartment">Apartment</SelectItem>
+                  <SelectItem value="hostel">Hostel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label id={sortId} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Sort by
+              </Label>
+              <Select
+                value={sort}
+                onValueChange={(v) => {
+                  if (v) setSort(v);
+                }}
+              >
+                <SelectTrigger
+                  aria-labelledby={sortId}
+                  className="h-12 rounded-xl border-2 border-primary/15 bg-background text-base shadow-sm"
+                >
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recommended">Recommended</SelectItem>
+                  <SelectItem value="rating_desc">Top rated</SelectItem>
+                  <SelectItem value="price_asc">Price: low to high</SelectItem>
+                  <SelectItem value="price_desc">Price: high to low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -162,9 +200,9 @@ export function StaySearch() {
           ))}
         </div>
       ) : stays && stays.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-muted/40 p-10 text-center">
-          <p className="font-medium">No stays match your filters</p>
-          <p className="mt-2 text-sm text-muted-foreground">Try clearing search or switching property type.</p>
+        <div className="rounded-xl border border-dashed border-primary/25 bg-muted/50 p-12 text-center">
+          <p className="text-lg font-semibold text-foreground">No stays match your search</p>
+          <p className="mt-2 text-sm text-muted-foreground">Clear the search box or switch property type.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

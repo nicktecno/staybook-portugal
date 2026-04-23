@@ -1,5 +1,7 @@
 import type { Booking, Review, Stay, StayListItem } from "@/types";
 
+const cred: RequestInit = { credentials: "include", cache: "no-store" as RequestCache };
+
 async function parseJson<T>(response: Response): Promise<T> {
   const text = await response.text();
   if (!text) {
@@ -21,6 +23,11 @@ async function errorMessageFromResponse(res: Response, fallback: string) {
   }
 }
 
+export type StayDetailResponse = {
+  stay: Stay;
+  calendarBlocks: { start: string; end: string }[];
+};
+
 export async function fetchStays(params: {
   query?: string;
   propertyType?: string;
@@ -31,26 +38,26 @@ export async function fetchStays(params: {
   if (params.query) sp.set("query", params.query);
   if (params.propertyType) sp.set("propertyType", params.propertyType);
   if (params.sort) sp.set("sort", params.sort);
-  const res = await fetch(`/api/stays?${sp.toString()}`, { signal: params.signal, cache: "no-store" });
+  const res = await fetch(`/api/stays?${sp.toString()}`, { ...cred, signal: params.signal });
   if (!res.ok) {
     throw new Error(await errorMessageFromResponse(res, `Request failed (${res.status})`));
   }
   return parseJson<{ stays: StayListItem[] }>(res);
 }
 
-export async function fetchStay(id: string, signal?: AbortSignal): Promise<{ stay: Stay }> {
-  const res = await fetch(`/api/stays/${id}`, { signal, cache: "no-store" });
+export async function fetchStay(id: string, signal?: AbortSignal): Promise<StayDetailResponse> {
+  const res = await fetch(`/api/stays/${id}`, { ...cred, signal });
   if (!res.ok) {
     throw new Error(await errorMessageFromResponse(res, `Request failed (${res.status})`));
   }
-  return parseJson<{ stay: Stay }>(res);
+  return parseJson<StayDetailResponse>(res);
 }
 
 export async function fetchReviews(
   stayId: string,
   signal?: AbortSignal,
 ): Promise<{ reviews: Review[] }> {
-  const res = await fetch(`/api/stays/${stayId}/reviews`, { signal, cache: "no-store" });
+  const res = await fetch(`/api/stays/${stayId}/reviews`, { ...cred, signal });
   if (!res.ok) {
     throw new Error(await errorMessageFromResponse(res, `Request failed (${res.status})`));
   }
@@ -64,6 +71,7 @@ export async function postReview(
   const res = await fetch(`/api/stays/${stayId}/reviews`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   });
   const data = await parseJson<{ review?: Review; error?: string }>(res);
@@ -78,11 +86,32 @@ export async function fetchBooking(
   id: string,
   signal?: AbortSignal,
 ): Promise<{ booking: Booking; stay: Stay | null }> {
-  const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, { signal, cache: "no-store" });
+  const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, { ...cred, signal });
   if (!res.ok) {
     throw new Error(await errorMessageFromResponse(res, `Request failed (${res.status})`));
   }
   return parseJson<{ booking: Booking; stay: Stay | null }>(res);
+}
+
+export async function fetchMyBookings(): Promise<{
+  bookings: { booking: Booking; stay: Stay | null }[];
+}> {
+  const res = await fetch("/api/bookings", { ...cred });
+  if (!res.ok) {
+    throw new Error(await errorMessageFromResponse(res, `Request failed (${res.status})`));
+  }
+  return parseJson<{ bookings: { booking: Booking; stay: Stay | null }[] }>(res);
+}
+
+export async function cancelBooking(id: string): Promise<void> {
+  const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const msg = await errorMessageFromResponse(res, `Request failed (${res.status})`);
+    throw new Error(msg);
+  }
 }
 
 export async function postBooking(body: {
@@ -91,12 +120,12 @@ export async function postBooking(body: {
   checkOut: string;
   guests: number;
   guestName: string;
-  guestEmail: string;
   paymentMethod: string;
 }): Promise<{ booking: Booking; quote: { nights: number; subtotal: number; cleaningFee: number; total: number } }> {
   const res = await fetch(`/api/bookings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   });
   const data = await parseJson<{

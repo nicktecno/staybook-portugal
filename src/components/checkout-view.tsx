@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Stay } from "@/types";
-import { fetchStay } from "@/lib/api";
+import { fetchStay, postBooking } from "@/lib/api";
 import { isRangeAvailable } from "@/lib/availability";
 import { quoteStay } from "@/lib/pricing";
-import { postBooking } from "@/lib/api";
+import { useAuth } from "@/context/auth-context";
 import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -31,20 +31,22 @@ function money(n: number, currency: string) {
 
 export function CheckoutView({ stayId }: { stayId: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const sp = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+
   const checkIn = sp.get("checkIn") ?? "";
   const checkOut = sp.get("checkOut") ?? "";
   const guestsInitial = Number(sp.get("guests") ?? "2");
 
   const nameId = useId();
-  const emailId = useId();
 
   const [stay, setStay] = useState<Stay | null>(null);
+  const [calendarBlocks, setCalendarBlocks] = useState<{ start: string; end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -57,9 +59,11 @@ export function CheckoutView({ stayId }: { stayId: string }) {
     try {
       const s = await fetchStay(stayId);
       setStay(s.stay);
+      setCalendarBlocks(s.calendarBlocks);
     } catch (e) {
       setError((e as Error).message);
       setStay(null);
+      setCalendarBlocks([]);
     } finally {
       setLoading(false);
     }
@@ -72,10 +76,28 @@ export function CheckoutView({ stayId }: { stayId: string }) {
     return () => window.clearTimeout(t);
   }, [load]);
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      const qs = sp.toString();
+      const here = qs ? `${pathname}?${qs}` : pathname;
+      const ret = encodeURIComponent(here);
+      router.replace(`/login?returnUrl=${ret}`);
+    }
+  }, [authLoading, user, router, pathname, sp]);
+
+  useEffect(() => {
+    if (!user?.displayName) return;
+    const t = window.setTimeout(() => {
+      setGuestName((n) => (n.trim() ? n : user.displayName));
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [user]);
+
   const okDates = useMemo(() => {
     if (!stay || !checkIn || !checkOut) return false;
-    return isRangeAvailable(checkIn, checkOut, stay.blockedRanges);
-  }, [stay, checkIn, checkOut]);
+    return isRangeAvailable(checkIn, checkOut, calendarBlocks);
+  }, [stay, checkIn, checkOut, calendarBlocks]);
 
   const quote = useMemo(() => {
     if (!stay || !checkIn || !checkOut) return null;
@@ -89,7 +111,7 @@ export function CheckoutView({ stayId }: { stayId: string }) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!stay) return;
+    if (!stay || !user) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -99,7 +121,6 @@ export function CheckoutView({ stayId }: { stayId: string }) {
         checkOut,
         guests,
         guestName,
-        guestEmail,
         paymentMethod,
       });
       router.push(`/bookings/confirmation?id=${encodeURIComponent(res.booking.id)}`);
@@ -108,6 +129,19 @@ export function CheckoutView({ stayId }: { stayId: string }) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen">
+        <SiteHeader />
+        <div className="mx-auto max-w-3xl space-y-4 px-4 py-10 sm:px-6">
+          <Skeleton className="h-8 w-1/2" />
+          <Skeleton className="h-48 w-full" />
+          <p className="text-sm text-muted-foreground">Redirecting to sign in…</p>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -129,9 +163,7 @@ export function CheckoutView({ stayId }: { stayId: string }) {
         <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
           <Alert variant="destructive">
             <AlertTitle>Checkout unavailable</AlertTitle>
-            <AlertDescription className="mt-2">
-              {error ?? "Unknown error"}
-            </AlertDescription>
+            <AlertDescription className="mt-2">{error ?? "Unknown error"}</AlertDescription>
           </Alert>
           <Link href="/" className={cn(buttonVariants({ variant: "outline" }), "mt-4 inline-flex")}>
             Home
@@ -147,11 +179,14 @@ export function CheckoutView({ stayId }: { stayId: string }) {
         <SiteHeader />
         <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
           <Alert>
-            <AlertTitle>Select dates again</AlertTitle>
+            <AlertTitle>Dates unavailable</AlertTitle>
             <AlertDescription className="mt-3 space-y-2">
-              <p>Your checkout link is missing dates, or the stay is not available for the selected range.</p>
+              <p>
+                This checkout link is incomplete, or those nights are no longer free (someone else may have booked
+                them).
+              </p>
               <Link href={`/stays/${stay.id}`} className={cn(buttonVariants())}>
-                Return to stay
+                Back to stay
               </Link>
             </AlertDescription>
           </Alert>
@@ -165,11 +200,13 @@ export function CheckoutView({ stayId }: { stayId: string }) {
       <SiteHeader />
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Checkout</h1>
-          <p className="mt-2 text-muted-foreground">Payment is mocked — you will still receive a real confirmation record.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-primary">Checkout</h1>
+          <p className="mt-2 text-muted-foreground">
+            Mock payment — the booking is tied to your account ({user.email}).
+          </p>
         </div>
 
-        <Card>
+        <Card className="border-primary/10 shadow-md">
           <CardHeader>
             <CardTitle className="text-base">Trip summary</CardTitle>
             <CardDescription>{stay.title}</CardDescription>
@@ -193,35 +230,24 @@ export function CheckoutView({ stayId }: { stayId: string }) {
                 Cleaning <span className="font-medium">{money(quote.cleaningFee, stay.currency)}</span>
               </p>
             ) : null}
-            <p className="text-base font-semibold">
-              Total {money(quote.total, stay.currency)}
-            </p>
+            <p className="text-base font-semibold text-primary">Total {money(quote.total, stay.currency)}</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-primary/10 shadow-md">
           <CardHeader>
             <CardTitle className="text-base">Guest & payment</CardTitle>
-            <CardDescription>We only use this to show a realistic checkout form.</CardDescription>
+            <CardDescription>Confirmation email is sent to your account email.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={onSubmit}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor={nameId}>Full name</Label>
-                  <Input id={nameId} value={guestName} onChange={(e) => setGuestName(e.target.value)} autoComplete="name" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={emailId}>Email</Label>
-                  <Input
-                    id={emailId}
-                    type="email"
-                    value={guestEmail}
-                    onChange={(e) => setGuestEmail(e.target.value)}
-                    autoComplete="email"
-                    required
-                  />
-                </div>
+              <div className="rounded-lg border border-primary/10 bg-muted/40 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Account: </span>
+                <span className="font-medium">{user.email}</span>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={nameId}>Name on booking</Label>
+                <Input id={nameId} value={guestName} onChange={(e) => setGuestName(e.target.value)} autoComplete="name" required />
               </div>
               <div className="space-y-2">
                 <Label>Payment method (mock)</Label>
@@ -251,7 +277,7 @@ export function CheckoutView({ stayId }: { stayId: string }) {
                 <Link href={`/stays/${stay.id}`} className={cn(buttonVariants({ variant: "outline" }), "inline-flex")}>
                   Back
                 </Link>
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
                   {submitting ? "Confirming…" : "Confirm booking"}
                 </Button>
               </div>
